@@ -9,7 +9,7 @@
 <br/>
 
 # 使用 Use
-打开 unRAID WebUI，进入“插件”标签页，点击“安装插件”，在弹出的对话框中输入以下URL并安装：
+打开 unRAID WebUI，进入“插件”标签页，点击“安装插件”，在输入框中输入以下URL并安装：
 
 ```bash
 https://raw.githubusercontent.com/InSnocent/Unraid_Plugins_FBQuantum/refs/heads/master/FB.plg
@@ -20,7 +20,7 @@ https://raw.githubusercontent.com/InSnocent/Unraid_Plugins_FBQuantum/refs/heads/
 ***
 
 
-Open unRAID WebUI, go to the "Plugins" tab, click "Install Plugin", and enter the following URL in the dialog box:
+Open unRAID WebUI, go to the "Plugins" tab, click "Install Plugin", and enter the following URL in the input box:
 ```bash
 https://raw.githubusercontent.com/InSnocent/Unraid_Plugins_FBQuantum/refs/heads/master/FB.plg
 ```
