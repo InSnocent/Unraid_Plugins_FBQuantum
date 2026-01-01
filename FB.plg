@@ -1,8 +1,10 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "filebrowser-quantum">
-  <!ENTITY author    "insomnia417 、 InSnocent">
+  <!ENTITY author    "insomnia417/InSnocent">
   <!ENTITY version   "2026.01.01">
+  <!ENTITY description "FileBrowser Quantum 的 unRAID 插件移植版本">
+  <!ENTITY Icon      "folder-open">
   <!ENTITY launch    "Settings/&name;">
   <!ENTITY pluginURL "https://raw.githubusercontent.com/insomnia417/filebrowser-quantum/main/filebrowser-quantum.plg">
   <!ENTITY remoteBin "https://github.com/gtsteffaniak/filebrowser/releases/latest/download/linux-amd64-filebrowser">
