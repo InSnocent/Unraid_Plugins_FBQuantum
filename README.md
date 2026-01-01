@@ -29,9 +29,17 @@ After installation, go to the "Settings" tab -> "User Utilities" to find "FileBr
 
 
 # 说明 Description
+默认账号：admin<br/>
+默认密码：admin<br/>
+更多内容请查看[FileBrowser Quantum 官方文档](https://filebrowserquantum.com/en/docs/)<br/>
+
+Default account: admin<br/>
+Default password: admin<br/>
+For more information, please refer to the [FileBrowser Quantum official documentation](https://filebrowserquantum.com/en/docs/)<br/>
+
+# 关于 About
 insomnia417跨年的时候又在折腾NAS，然后就有了这个项目（笑）
 
-Insomnia417 was tinkering with his NAS again during the New Year, and thus this project was born (lol).
 
 # 感谢 Thanks
 原项目：[FileBrowser Quantum](https://github.com/gtsteffaniak/filebrowser)<br />
