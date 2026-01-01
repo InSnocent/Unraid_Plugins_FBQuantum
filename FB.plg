@@ -21,8 +21,8 @@
 
 
 
-<FILE Name="&usbcfgdir;" Mode="0755">
-  <URL>&pkgurl;/packages/filebrowser</URL>
+<FILE Name="/usr/local/bin/filebrowser" Mode="0755">
+  <URL>&remoteBin;</URL>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
