@@ -35,6 +35,8 @@ After installation, go to the "Settings" tab -> "User Utilities" to find "FileBr
 + 默认密码：admin<br/>
 + 更多内容请查看[FileBrowser Quantum 官方文档](https://filebrowserquantum.com/en/docs/)<br/>
 
+***
+
 + Default account: admin<br/>
 + Default password: admin<br/>
 + For more information, please refer to the [FileBrowser Quantum official documentation](https://filebrowserquantum.com/en/docs/)<br/>
