@@ -14,10 +14,14 @@
 
 <CHANGES>
 ### 2026.01.01
-- 移植版：由 insomnia417、InSnocent 维护
 - 路径优化：默认使用 /mnt/user/appdata/filebrowser_quantum
 - 功能：自动追踪 gtsteffaniak 仓库最新二进制文件
 - 集成：支持 Unraid Settings 菜单与自动更新检测
+
+### 2026.01.04
+- 重构：接入 Unraid 阵列生命周期（rc.d）
+- 修复：阵列停止时占用 /mnt/user 的问题
+- 将插件页面迁移到insomnia417心心念念的菜单栏
 </CHANGES>
 
 
@@ -25,16 +29,36 @@
   <URL>&remoteBin;</URL>
 </FILE>
 <!-- 前端页面文件 -->
-<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
+<FILE Name="/usr/local/emhttp/plugins/dynamix/FB.page">
 <INLINE><![CDATA[
-Menu="Utilities"
-Type="parameter"
-Title="FileBrowser Q"
+Menu="Tasks:91"
+Type="xmenu"
+Title="FQ"
 Icon="folder-open"
 ---
 <?php
   $addr = $_SERVER['SERVER_ADDR'];
+  if (!isset($display['favorites'])) {
+    $favorites = 'true';
+  } else {
+    $favorites = $display['favorites'] == 'yes' ? 'true' : 'false';
+  }
 ?>
+  <script>
+  function addPage(page) {
+    $.post('/webGui/include/MyFavorites.php',{action:'add',page:page},function(){
+      swal({title:"_(Added to Favorites)_",text:"",type:"success",html:true,confirmButtonText:"_(Ok)_"},function(x){refresh();});
+    });
+  }
+
+  $(function(){
+    $('div.Panel').each(function(){
+      var page = $(this).find('a').prop('href').split('/').pop();
+      if (<?=$favorites?>) {$(this).find('span').append('<i class="fa fa-heart favo" title="_(Add to favorites)_" onclick="addPage(&quot;'+page+'&quot;);return false"></i>');}
+      if (<?=$favorites?>) { $(this).hover(function(){$(this).find('i.favo').show();},function(){$(this).find('i.favo').hide();});}
+    });
+  });
+  </script>
   <style>
     .gradient-btn::before {
       content: '';
@@ -70,32 +94,28 @@ Icon="folder-open"
 <FILE Run="/bin/bash">
 <INLINE><![CDATA[
 # --- 1. 环境准备 ---
-CONF_DIR="/mnt/user/appdata/filebrowser_quantum"
-mkdir -p "$CONF_DIR"
-
-# 杀死旧进程，确保端口可用
-pkill -f "filebrowser"
-fuser -k 8081/tcp > /dev/null 2>&1
-
-
-# --- 2. 检查安装包 ---
-if [ ! -s "/usr/local/bin/filebrowser" ]; then
-  echo "错误：无法从 GitHub 获取二进制文件，请检查网络连接。"
-  exit 1
-fi
-
+PLG_DIR="/usr/local/emhttp/plugins/filebrowser-quantum"
+mkdir -p "$PLG_DIR"
 chmod +x /usr/local/bin/filebrowser
 
-# --- 3. 初始化配置 ---
-# 如果配置文件不存在，则生成默认配置
-if [ ! -f "$CONF_DIR/config.yaml" ]; then
-  cat > "$CONF_DIR/config.yaml" <<EOF
+# --- 2. 创建标准服务脚本 (rc.filebrowser) ---
+cat << 'EOF' > /etc/rc.d/rc.filebrowser
+#!/bin/bash
+CONF_DIR="/mnt/user/appdata/filebrowser_quantum"
+BIN="/usr/local/bin/filebrowser"
 
-# ... 默认配置 ...
+filebrowser_start() {
+    # 确保阵列就绪
+    [ ! -d "/mnt/user" ] && return
+    mkdir -p "$CONF_DIR/cache"
+    PIDFILE="$CONF_DIR/filebrowser.pid"
+    if [ ! -f "$CONF_DIR/config.yaml" ]; then
+      cat > "$CONF_DIR/config.yaml" <<EOT
 server:
   port: 8081
   baseURL: "/"
   database: "$CONF_DIR/database.db"
+  cacheDir: "$CONF_DIR/cache"
   logging:
     - levels: "info|warning|error"
   sources:
@@ -106,20 +126,69 @@ userDefaults:
     admin: true
     modify: true
     download: true
+EOT
+    fi
+    # 如果已有进程在运行，先停止
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        kill "$(cat "$PIDFILE")" 2>/dev/null
+        rm -f "$PIDFILE"
+        sleep 1
+    fi
+    killall filebrowser >/dev/null 2>&1
+    cd "$CONF_DIR"
+    nohup "$BIN" -c "$CONF_DIR/config.yaml" > execution.log 2>&1 &
+    echo $! > "$PIDFILE"
+}
 
+filebrowser_stop() {
+    PIDFILE="$CONF_DIR/filebrowser.pid"
+    if [ -f "$PIDFILE" ]; then
+        kill "$(cat "$PIDFILE")" 2>/dev/null
+        rm -f "$PIDFILE"
+    fi
+    killall filebrowser >/dev/null 2>&1
+    fuser -k 8081/tcp > /dev/null 2>&1
+    sleep 1
+}
+
+case "$1" in
+    'start')   filebrowser_start ;;
+    'stop')    filebrowser_stop ;;
+    'restart') filebrowser_stop; sleep 2; filebrowser_start ;;
+    *) echo "Usage: $0 {start|stop|restart}" ;;
+esac
 EOF
+chmod +x /etc/rc.d/rc.filebrowser
+
+# --- 3. 创建开机自启监听脚本 (独立的物理文件) ---
+cat << 'EOF' > "$PLG_DIR/monitor.sh"
+#!/bin/bash
+# 延迟 30 秒启动，完全避开系统繁忙期
+sleep 30
+for i in {1..50}; do
+    if grep -q "mdState=STARTED" /var/local/emhttp/var.ini 2>/dev/null; then
+        /etc/rc.d/rc.filebrowser start
+        break
+    fi
+    sleep 10
+done
+EOF
+chmod +x "$PLG_DIR/monitor.sh"
+
+# --- 4. 注册系统事件钩子 (仅用于正常运行后的触发) ---
+mkdir -p "$PLG_DIR/event"
+echo "/etc/rc.d/rc.filebrowser start" > "$PLG_DIR/event/started"
+echo "/etc/rc.d/rc.filebrowser stop" > "$PLG_DIR/event/stopping_svcs"
+chmod +x "$PLG_DIR/event/"*
+
+# --- 5. 执行安装后的即刻启动 ---
+if [ -d "/mnt/user" ]; then
+    /etc/rc.d/rc.filebrowser start
+else
+    # 只有在阵列未开启时（通常是开机阶段），才使用后台异步
+    # 使用 screen 或这种脱离终端的写法，防止阻塞 emhttp
+    ("$PLG_DIR/monitor.sh" &) > /dev/null 2>&1
 fi
-
-# --- 4. 启动服务 ---
-
-# 杀死旧进程，确保端口可用
-pkill -f "filebrowser"
-fuser -k 8081/tcp > /dev/null 2>&1
-
-cd "$CONF_DIR"
-
-# 以后台守护进程模式运行
-nohup /usr/local/bin/filebrowser > execution.log 2>&1 &
 
 echo "----------------------------------------------------"
 echo " filebrowser-quantum 已安装成功并启动！"
@@ -134,9 +203,18 @@ echo "----------------------------------------------------"
 <FILE Run="/bin/bash" Method="remove">
 <INLINE><![CDATA[
 echo "正在移除 FileBrowser Quantum..."
-pkill -f "filebrowser"
-rm -rf /usr/local/emhttp/plugins/filebrowser-quantum
+# 停止服务
+/etc/rc.d/rc.filebrowser stop 2>/dev/null
+# 确保所有相关进程都已停止
+killall filebrowser >/dev/null 2>&1
+pkill -f monitor.sh >/dev/null 2>&1
+fuser -k 8081/tcp >/dev/null 2>&1
+sleep 2
+# 清理文件
+rm -f /etc/rc.d/rc.filebrowser
+rm -rf /usr/local/emhttp/plugins/dynamix/FB.page
 rm -f /usr/local/bin/filebrowser
+rm -f /boot/config/plugins/FB.plg
 echo "程序已移除，数据保留在 /mnt/user/appdata/filebrowser_quantum，有需要可手动删除"
 ]]></INLINE>
 </FILE>
